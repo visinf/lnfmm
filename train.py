@@ -20,8 +20,8 @@ import torch.nn.functional as F
 
 from build_vocab_coco import Vocabulary
 
-from text_modules import TextEncoder, TextDecoder
-from latent_align_modules import FlowLatent, GaussianDiag
+from modules.text_modules import TextEncoder, TextDecoder
+from modules.latent_align_modules import FlowLatent, GaussianDiag
 from custom_cococaptions import CocoCaptions
 
 
@@ -208,15 +208,15 @@ if __name__ == "__main__":
 
 	'''define models'''
 	if config_setting == 'params_i2t':
-		from SaGAN import Generator64 as Generator
-		from SaGAN import Discriminator64 as Discriminator
-		from image_modules import VGG16Encoder as ImageEncoder
+		from modules.SaGAN import Generator64 as Generator
+		from modules.SaGAN import Discriminator64 as Discriminator
+		from modules.image_modules import VGG16Encoder as ImageEncoder
 		image_encoder = ImageEncoder( img_dim + noise_im, hidden_dims=2048 ).cuda()
 
 	else:
-		from SaGAN import Generator 
-		from SaGAN import Discriminator
-		from image_modules import ImageEncoder
+		from modules.SaGAN import Generator 
+		from modules.SaGAN import Discriminator
+		from modules.image_modules import ImageEncoder
 		image_encoder = ImageEncoder( img_dim + noise_im, noise_im).cuda()
 
 
