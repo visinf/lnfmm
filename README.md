@@ -1,7 +1,7 @@
 # Introduction
 
 <p align="center">
-  <img width="320" height="200" src="/assets/teaser.png" hspace="30">
+  <img width="549" height="200" src="/assets/teaser.png" hspace="30">
 </p>
 
 This repository is the PyTorch implementation of the paper:
