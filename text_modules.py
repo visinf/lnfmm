@@ -1,16 +1,12 @@
 from __future__ import print_function
-import random
 import numpy as np
+
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torch.utils.data
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from torch.autograd import Variable
 import torch.nn.functional as F
-import itertools
-from tqdm import tqdm
-import pickle
 
 
 #device = torch.device("cuda:0")

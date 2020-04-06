@@ -1,12 +1,10 @@
 from __future__ import print_function
-import random
 import numpy as np
+import scipy
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import itertools
-import math
-import scipy
 
 device = torch.device("cuda:0")
 

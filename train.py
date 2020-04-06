@@ -1,28 +1,25 @@
 from __future__ import print_function
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import os
 import random
 import numpy as np
+import nltk
+import argparse
+import itertools
+import pickle
+import json
+from tqdm import tqdm
+
 import torch
 import torch.nn as nn
-import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
-import torchvision.utils as vutils
 from torch.utils.data import Dataset, DataLoader
-from torch.autograd import Variable
 import torch.nn.functional as F
-import itertools
-from tqdm import tqdm
-import pickle
-import json
+
 from build_vocab_coco import Vocabulary
-import nltk
-import argparse
+
 from text_modules import TextEncoder, TextDecoder
 from latent_align_modules import FlowLatent, GaussianDiag
 from custom_cococaptions import CocoCaptions
@@ -33,36 +30,7 @@ np.random.seed(149)
 
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
-
-
-def save_pred_image_and_text( gt_text, gt_image, pred_text, pred_image ):
-	gt_image = np.transpose(gt_image, (1,2,0))
-	pred_image = np.transpose(pred_image, (0,2,3,1))
-	fig, axs = plt.subplots(4,5)
-	axs[0,0].text(0.5,0.5, ' '.join(gt_text[1:]), wrap = True, horizontalalignment = 'center', fontsize = 12)#wrap = True, horizontalalignment = 'center',
-	axs[1,0].imshow( (gt_image + 1)/2. )
-	axs[2,0].text(0.5,0.5, ' '.join(pred_text), wrap = True, horizontalalignment = 'center', fontsize = 12)
-	for i in range(5):
-		axs[3,i].imshow( (pred_image[i] + 1)/2. )
-
-	for ax_idx_i in range(4):
-		for ax_idx_j in range(5):
-			axs[ax_idx_i,ax_idx_j].axis('off')
-
-	try:
-		plt.savefig('./curr_preds_sa_cond.png', bbox_inches='tight')#_withoutspec_alt
-	except Exception:
-		print('Try again')
-	plt.close(); 
-
-def sample_multiple_images( image_decoder, glow_latent_image, _z_im_text2img, test_samples = 5):
-	all_samples = []
-	for _ in range(test_samples):
-		rev, _ = glow_latent_image(x=None,z_im=None, z=None, cond=_z_im_text2img, eps_std=None, reverse=True)
-		z_im_decoded = image_decoder( z=rev, t2i = _z_im_text2img  )#image_decoder(z_im_text2img.view(z_im_text2img.size(0),z_im_text2img.size(1),1,1)) 
-		all_samples.append(z_im_decoded.unsqueeze(1).clone().detach().cpu())
-	all_samples = torch.cat(all_samples,dim=1)
-	return all_samples 
+ 
 	
 def load_dataset(data_path,config_setting):
 	train_path = str(data_path)+'/train2014'
@@ -214,6 +182,9 @@ if __name__ == "__main__":
 	lambda_5 = config['lambda_5']
 	lambda_5_G = config['lambda_5_G']
 	chkpt_interval = config['chkpt_interval']
+	lr_i_e = config['lr_i_e']
+	beta_1_i_e = config['beta_1_i_e']
+	beta_2_d = config['beta_2_d']
 	device = torch.device("cuda:0")
 
 	'''load vocabulary from vocab.pkl'''
@@ -271,18 +242,12 @@ if __name__ == "__main__":
 	'''define optimizers'''
 	optimizerG_align = optim.Adam(flow_latent_align.parameters(),lr=0.0001)
 	optimizerG_image = optim.Adam(flow_latent_image.parameters(),lr=0.0001)
-	optimizerI_e = optim.Adam(image_encoder.parameters(),lr=0.0001,betas=(0.5, 0.999))#, betas=(0.0, 0.9)
+	optimizerI_e = optim.Adam(image_encoder.parameters(),lr=lr_i_e,betas=(beta_1_i_e, 0.999))#, betas=(0.0, 0.9)
 	optimizerI_d = optim.Adam(image_decoder.parameters(),lr=0.0001, betas=(0.0, 0.999))#, betas=(0.0, 0.9)
 	optimizerF = optim.Adam(itertools.chain(txtEncoder.parameters(),txtDecoder.parameters()),lr=0.0001)
 	optimizerG_cond_text = optim.Adam(flow_text_cond.parameters(),lr=0.0001)
-	optimizerD = optim.Adam(disc.parameters(),lr=0.0003, betas=(0.0, 0.999))
-	'''optimizerG_align = optim.Adam(flow_latent_align.parameters(),lr=0.0001)
-	optimizerG_image = optim.Adam(flow_latent_image.parameters(),lr=0.0001)
-	optimizerI_e = optim.Adam(image_encoder.parameters(),lr=0.00001, betas=(0.0, 0.9))#, betas=(0.0, 0.9)
-	optimizerI_d = optim.Adam(image_decoder.parameters(),lr=0.0001, betas=(0.0, 0.9))#, betas=(0.0, 0.9)
-	optimizerF = optim.Adam(itertools.chain(txtEncoder.parameters(),txtDecoder.parameters()),lr=0.0001)
-	optimizerG_cond_text = optim.Adam(flow_text_cond.parameters(),lr=0.0001)
-	optimizerD = optim.Adam(disc.parameters(),lr=0.0001, betas=(0.0, 0.9))'''
+	optimizerD = optim.Adam(disc.parameters(),lr=0.0003, betas=(0.0, beta_2_d))
+	''''''
 
 	NLL = nn.NLLLoss(size_average=False, ignore_index=0)
 	GAN_loss = nn.BCELoss()
@@ -299,7 +264,8 @@ if __name__ == "__main__":
 
 	for epoch in range(epochs):
 		adjust_learning_rate(optimizerI_e, epoch, 0.00001)
-		for i in tqdm(range(len(dataset)//batch_size)): 
+		train_bar = tqdm(range(len(dataset)//batch_size))
+		for i in train_bar: 
 
 			txtEncoder.zero_grad()
 			txtDecoder.zero_grad()
@@ -386,10 +352,8 @@ if __name__ == "__main__":
 				loss_im_lflow = lambda_3*torch.mean(nll_im)
 				loss_txt_rec = lambda_4*torch.mean(NLL_loss)
 				loss_im_rec  = lambda_5*(torch.mean(image_rec_loss)+lambda_5_G*torch.mean(err_G))
-				cond_loss_forward = F.mse_loss(z[:,:img_dim],z_im.to(device))
-				cond_loss_forward2 = 100*F.mse_loss(z_rev,txtencoded_hidden[:,:img_dim].to(device))
 
-				loss = (loss_shared_dim+loss_text_lflow+loss_im_lflow+loss_txt_rec+loss_im_rec + cond_loss_forward2).to(device)
+				loss = (loss_shared_dim+loss_text_lflow+loss_im_lflow+loss_txt_rec+loss_im_rec).to(device)
 				loss.backward()
 
 
@@ -407,20 +371,9 @@ if __name__ == "__main__":
 				optimizerI_d.step()
 				optimizerG_cond_text.step()
 
+				train_bar.set_description('Loss %.2f | Epoch %d -- Iteration ' % (loss.item(),epoch))
+
 			if i%chkpt_interval==0:
-				tqdm.write('Epoch: ' + str(epoch)+ ' loss: ' + str(loss.item()) + \
-					' loss_shared_dim: '+str(loss_shared_dim.item()) + \
-					' loss_text_lflow: ' + str(loss_text_lflow.item()) + \
-					' loss_im_lflow: ' + str(loss_im_lflow.item()) + \
-					' loss_txt_rec: ' + str(loss_txt_rec.item()) + \
-					' loss_im_rec:' + str(loss_im_rec.item()))
-				'''decoded_image_samples = sample_multiple_images(image_decoder, flow_latent_image, z_im_text2img[:,:img_dim], test_samples = 5)
-				gt_text = [vocab_wordlist[p] for p in seq[batch_size-1]][0:seq_lengths[batch_size-1]]
-				gt_image = img_gan[batch_size-1].clone().detach().cpu().numpy()
-				preds_inf = txtDecoder(None,txtencoded_hidden.to(device),max_length-1,train=False)
-				pred_text = [vocab_wordlist[p] for p in preds_inf[batch_size-1,:,0]][0:max_length]
-				pred_image = decoded_image_samples[batch_size-1].numpy()
-				save_pred_image_and_text( gt_text, gt_image, pred_text, pred_image)'''
 
 				torch.save({
 							'image_encoder_sd': image_encoder.module.state_dict(),
