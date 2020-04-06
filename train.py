@@ -18,11 +18,12 @@ import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 
-from build_vocab_coco import Vocabulary
 
 from modules.text_modules import TextEncoder, TextDecoder
 from modules.latent_align_modules import FlowLatent, GaussianDiag
-from custom_cococaptions import CocoCaptions
+
+from utils.build_vocab_coco import Vocabulary
+from utils.custom_cococaptions import CocoCaptions
 
 
 torch.manual_seed(149)
