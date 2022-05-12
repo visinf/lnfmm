@@ -41,7 +41,7 @@ For evalutaion we use the following repos,
 2. Concensus Reranking -  We use the repo of [mRNN-CR](https://github.com/mjhucla/mRNN-CR).
 3. Diversity - We use the repo of [DiversityMetrics](https://github.com/qingzwang/DiversityMetrics) (requires Python 2.7).
 
-Checkpoints will be available [here](https://drive.google.com/drive/folders/1ZYfajytm7e-aI8KnJRR92BTkddZDaczv?fbclid=IwAR0TFSi6JSl1FlKcF_7Jvz0OFPPZwWLrePRz0t__J_vnu1w_BNIODxUf7bQ) shortly.
+Checkpoints are available for [text-to-image synthesis](https://download.visinf.tu-darmstadt.de/data/2020-iclr-mahajan-lnfmm/model_checkpoint_t2i_release.pt) and for [image captioning](https://download.visinf.tu-darmstadt.de/data/2020-iclr-mahajan-lnfmm/model_checkpoint_i2t_release.pt).
 
 
 # Bibtex
